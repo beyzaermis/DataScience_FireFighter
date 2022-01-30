@@ -1,0 +1,335 @@
+---
+title: "MAT381E - INTRODUCTION TO DATA SCIENCE  Forest Fires in Turkey"
+subtitle: "FireFighter"
+author: "Beyzanur ERMİŞ - Ayşim HIRDAN"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+    class: center, middle
+
+---
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE, htmltools.preserve.raw = FALSE)
+```
+**WHY FOREST FIRES?**
+
+<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRt3k1cEit8bFLwNauO2M4kzJh31Oe_M9-HIA&usqp=CAU" width="400" height="350" />
+
+ According to the data of the General Directorate of Forestry of Turkey, a total of 68,579 fires broke out between 1988 and 2019, and 336,824 hectares of land were burned. This data corresponds to an average of 2,143 fires per year and the destruction of 10,526 hectares of land.
+
+---
+  
+**NOT JUST ABOUT TREE**  
+
+
+
+ 
+  <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQVzGlK12gotvsSX1bJedBZbsfN2_BRqOZ8Bg&usqp=CAU" width="400" height="350" />
+
+---
+
+**Raising awareness about forest fires and determining the measures that can be taken**  
+
+
+<img src="https://thumbs.dreamstime.com/b/be-aware-rubber-stamp-grunge-design-dust-scratches-effects-can-easily-removed-clean-crisp-look-color-changed-110066370.jpg" width="400" height="350" />
+
+---
+**Introduction Data**  
+
+
+
+<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSy9WNnif0ROFJuQTioWu9fW0pGYVSojOL9VA&usqp=CAU" width="700" height="350" />
+
+---
+```{r, warning=F, message=F}
+library(tidyverse)
+library(rvest)
+library(sf)
+library(leaflet)
+library(readr)
+library(readxl)
+library(ggplot2)
+library(tidyr)
+```
+---
+
+**FOREST AREAS IN TURKEY**
+
+```{r, warning=F, message=F}
+turkey <- st_read("data/turkey_administrativelevels0_1_2/tur_polbnda_adm1.shp")
+```
+
+```{r}
+turkey <- turkey %>%
+          arrange(adm1_tr) 
+```
+```{r}
+turkey[c(48:51),] <- turkey[c(49,50,51,48),]
+
+```
+```{r}
+turkey <- turkey %>%
+              select(adm1_tr) %>%
+              rename("Province" = adm1_tr)
+
+```
+---
+```{r}
+data_forestareas <- read_excel("data/Forest areas of all cities.xlsx")
+data_forestareas
+```
+---
+```{r}
+data_forestareas <- data_forestareas %>%
+          arrange(Province) %>%
+          select(Province,`Total Hectare`)
+```
+
+```{r}
+turkey[,"Province"] <- data_forestareas[,"Province"]
+```
+
+---
+
+```{r}
+cbind(data_forestareas$Province,turkey$Province)
+```
+---
+```{r}
+combine_2 <- merge(turkey,data_forestareas)
+```
+
+[FOREST AREA](file:///C:/Users/beyzanur/Desktop/project_final_report-firefighter/Forest%20Area%20Map.html)
+---
+
+**EVOLUTION OF TOTAL WILDFIRE AREAS**
+```{r}
+data_33years <- read_excel("data/Forest Fires of 33 Years.xlsx")
+data_33years
+```
+
+---
+
+```{r, fig.align='center'}
+data_33years %>%
+  tail(33) %>% 
+  ggplot(aes(x=Year,y=`Total Hectare`, group = 1))+geom_line( color="black")+ geom_point(shape=21, color="black", fill="red", size=3)+ ggtitle("Evolution of Total Forest Fires")
+```
+
+
+---
+
+**EVOLUTION OF TOTAL WILDFIRE NUMBERS**
+
+```{r}
+yillara_gore_data <- read_xlsx("data/yangin19972020.xlsx") 
+yillara_gore_data
+```
+
+---
+
+```{r, fig.align='center'}
+myplot <- ggplot(yillara_gore_data, aes(x=YILLAR, y=YANGIN_SAYISI)) + geom_line(color="black", size=2, linetype="solid") +theme(axis.title = element_text(color = "red", size=15, face = "bold") ) + theme(axis.line = element_line(colour = "black", size = 1)) +labs(x="YEARS",y="NUMBER OF FIRE",title="EVOLUTION OF TOTAL WILDFIRE NUMBERS", size_sum(50),face="bold",subtitle = "Number of fire between 1997 and 2020") +theme(plot.title = element_text(colour ="red", hjust=0.5, size = 15))
+myplot
+```    
+
+---
+
+**FOREST FIRE AMOUNTS OF ALL PROVINCES IN 2020**
+
+```{r}
+data_allprovinces <- read_excel("data/Forest fire amounts of all provinces in 2020.xlsx")
+data_allprovinces
+```
+---
+
+
+```{r}
+data_allprovinces <- data_allprovinces %>%
+          arrange(Province) %>%
+          select(Province,Hectare)
+```
+```{r}
+data_allprovinces$Hectare <- gsub(",",".",data_allprovinces$Hectare) %>% as.numeric() %>% suppressWarnings()
+```
+```{r}
+turkey[,"Province"] <- data_allprovinces[,"Province"]
+```
+
+```{r}
+combine2 <- merge(turkey,data_allprovinces)
+```
+
+[FOREST FIRE AMOUNTS OF ALL PROVINCES IN 2020](file:///C:/Users/beyzanur/Desktop/project_final_report-firefighter/Amount%20of%20Burned%20Area%20Map.html)
+---
+
+**PROVINCES WITH THE MOST FOREST FIRES IN 2020**
+```{r}
+il_dagilimi_data <- read_xlsx("data/illeregoredagilimi.xlsx")
+il_dagilimi_data
+```
+```{r}
+en_fazla_yangin_iller <-il_dagilimi_data %>%filter( Number > 50) 
+```
+
+---
+
+```{r, fig.align='center'}
+myplot2 <- ggplot(en_fazla_yangin_iller, aes(Province,Number)) +
+  geom_point() +ggtitle("NUMBER OF FIRE IN CITY") +xlab("City") +ylab("Number") +theme (axis.text.x = element_text(angle=90)) +theme(plot.title = element_text(colour ="red", hjust=0.5, size = 15) )
+myplot2
+```  
+---
+**CITIES WITH MINIMUM FOREST FIRE IN 2020**
+```{r}
+en_az_yangin_iller <-il_dagilimi_data %>%
+         filter( Number < 10) 
+en_az_yangin_iller
+```
+
+---
+
+```{r, fig.align='center'}
+myplot3 <- ggplot(en_az_yangin_iller, aes(Province,Number)) +
+  geom_point() +ggtitle("NUMBER OF FIRE IN CITY") +xlab("City") +ylab("Number") +theme (axis.text.x = element_text(angle=90)) +theme(plot.title = element_text(colour ="red", hjust=0.5, size = 15) )
+myplot3
+```  
+---
+**WİLDFIRE COMPARISONS IN SOME CITIES**
+```{r}
+data_provinces <- read_excel("data/2013-2018.xlsx")
+data_provinces
+```
+---
+```{r, warning=F, message=F}
+data_provinces$Hectare <- gsub(",",".",data_provinces$Hectare) %>% as.numeric()
+```
+
+
+```{r}
+data_9province <- data_provinces %>%
+        filter((Province == "Hatay" | 
+         Province== "Adana"|
+         Province == "İzmir" |
+         Province == "Antalya" |
+         Province == "Muğla" |
+         Province == "Mersin" |
+         Province == "Çanakkale" |
+         Province == "Kastamonu" |
+         Province == "Ankara") & 
+         Year != "2013" & 
+         Year != "2014" ) 
+```
+---
+```{r, fig.height=6, fig.width=9, fig.align='center'}
+data_9province %>%
+  ggplot(aes(factor(Province), Hectare, fill = factor(Year)))+
+  geom_bar(stat="identity", position = "dodge") + 
+  scale_fill_brewer(palette = "Set1") +
+  xlab("Provinces") + ylab("Hectares of Burned Areas") + ggtitle("Wildfire Comparisons in Some Cities") + labs(fill = "Year")
+  
+  
+```
+---
+
+**CAUSES OF FOREST FIRE IN 2020**
+
+```{r}
+data_cause2020 <- read_excel("data/causes-2020.xlsx")
+data_cause2020
+```
+---
+```{r, fig.width=9, fig.align='center'}
+ggplot(data_cause2020) + 
+  geom_segment( aes(x=Cause, xend=Cause, y=0, yend=Value), color="grey") + geom_point( aes(x=Cause, y=Value, color=Group),  size=3 ) + coord_flip()+ theme_dark()+
+  theme(legend.position = "none", panel.border = element_blank(), panel.spacing = unit(0.1, "lines"),strip.text.x = element_text(size = 8)) + xlab("Causes") + ylab("Number of Forest Fires") + ggtitle("Causes of Forest Fire in 2020") + facet_wrap(~Group, ncol=1, scale="free_y")
+```
+---
+
+**TYPES OF FORESTS BURNED IN 2020**
+```{r}
+data_foresttype <- read_excel("data/Forest Type.xlsx")
+data_foresttype
+```
+---
+```{r}
+data_foresttype$`Total Hectare` <- gsub(",",".",data_foresttype$`Total Hectare`) %>% as.numeric()
+```
+
+```{r}
+data_foresttype <- data_foresttype %>%
+  mutate(Ratio = round(data_foresttype$`Total Hectare`/sum(data_foresttype$`Total Hectare`)*100)) %>%
+  mutate(Percentage = paste("%",Ratio))
+```
+---
+```{r, fig.height=8, fig.width=9, fig.align='center'}
+ggplot(data = data_foresttype, aes(x = "", y = `Total Hectare`, fill = `Forest Type`))+
+  geom_bar(stat = "identity", color = "black",width = 1)+coord_polar("y", start=0) +geom_text(aes(label = Percentage),position = position_stack(vjust = 0.4)) + theme_void() + ggtitle("Types of Forests Burning in 2020")
+```
+
+---
+
+**SUPPORTING SERVICES**
+```{r}
+data_destekleyicihizmetler <- read_excel("data/destekleyicihizmetler.xlsx")
+data_destekleyicihizmetler
+```
+
+```{r}
+data_destekleyicihizmetler$TOTAL <- gsub(",",".",data_destekleyicihizmetler$TOTAL) %>% as.numeric()
+data_destekleyicihizmetler <- data_destekleyicihizmetler %>%
+  mutate(Ratio = round(data_destekleyicihizmetler$TOTAL/sum(data_destekleyicihizmetler$TOTAL)*100)) %>%
+  mutate(Percentage = paste("%",Ratio))
+```
+---
+```{r, fig.height=9, fig.width=10, fig.align='center'}
+ggplot(data_destekleyicihizmetler, aes(x="", y=TOTAL, fill=TANIM)) +
+  geom_bar(stat="identity", width=1, color="black") +coord_polar("y", start=0) +geom_text(aes(label = Percentage),position = position_stack(vjust = 0.5)) +scale_fill_viridis_d() +theme_void()+ggtitle("SUPPORTING SERVICE")+labs(fill = "DEFINITION")
+```
+---
+**SILVICULTURAL EVALUATION OF BURNED AREAS IN 2020**
+```{r}
+data_silvicultural <- read_excel("data/silvicultural.xlsx")
+data_silvicultural
+```
+
+```{r}
+data_silvicultural$Total <- gsub(",",".",data_silvicultural$Total) %>% as.numeric()
+data_silvicultural <- data_silvicultural %>%
+  mutate(Ratio = round(data_silvicultural$Total/sum(data_silvicultural$Total)*100)) %>%
+  mutate(Percentage = paste("%",Ratio))
+```
+
+---
+
+```{r, fig.height=9, fig.width=10, fig.align='center'}
+ggplot(data_silvicultural, aes(x="", y=Total, fill=Operation)) +
+  geom_bar(stat="identity", width=1, color="black") + coord_polar("y", start=0) + geom_text(aes(label = Percentage), position = position_stack(vjust = 0.5)) + scale_fill_viridis_d() + theme_void()+ ggtitle("Silvicultural evaluation of burned areas in 2020")+ labs(fill = "Silviculture Operations")
+```
+---
+**Challanges**  
+* While implementing our project, difficulties were encountered in the mapping and pie chart stages
+* Problems occurred while loading the map to the slide
+---
+**Conclusion**  
+The conclusions drawn from the project are as follows:  
+* The number of forest fires in our country is higher in the west than in the east.  
+* The most obvious cause of fire is negligence.  
+* Measures should be increased especially in the southern parts of the country, especially in Hatay, Adana, İzmir, Antalya and   Muğla.  
+* The most burned areas are our most productive high forests. 
+---
+**References**  
+[1](https://www.ogm.gov.tr/tr/e-kutuphane/resmi-istatistikler)  
+[2](https://www.kirenz.com/slides/xaringan-demo-slides.html#40)  
+[3](https://www.markdownguide.org/basic-syntax/)  
+[4](https://www.youtube.com/watch?v=nnRAKsQ2uaQ&t=220s)  
+[5](https://rpubs.com/hmztnc/461183)  
+[6](https://www.data-to-viz.com/#lollipop)  
+[7](https://www.datanovia.com/en/blog/how-to-create-a-pie-chart-in-r-using-ggplot2/)  
+[8](https://www.kirenz.com/slides/xaringan-demo-slides.html#1)  
+[9](https://www.data-to-viz.com/graph/lollipop.html)  
+[10](https://stackoverflow.com/questions/17721126/simplest-way-to-do-grouped-barplot)  
+[11](http://r-statistics.co/Top50-Ggplot2-Visualizations-MasterList-R-Code.html)  

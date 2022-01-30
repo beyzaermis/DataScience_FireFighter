@@ -1,0 +1,461 @@
+---
+title: "FOREST FIRES IN TURKEY"
+author: "FireFighter"
+date: "29/01/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#### Project Description ####  
+
+In this project, forest fires in Turkey were analyzed mathematically, causally and consequentially with the data we received   from the Ministry of Agriculture and Forestry.  
+  
+  
+#### Social Problem ####  
+  Forest fires that have started to increase in Turkey, especially recently, worry us all. We are all deeply saddened by the loss   of animals, people who have lost their lives, and the loss of our oxygen sources before our eyes. In our project, we want to   deal with forest fires, which have been on the agenda recently in our country.    
+We will also try to answer the following questions that people wonder:  
+
+* Why do these forest fires occur?  
+
+* Which regions are more exposed to forest fires?  
+
+* How are areas damaged by fire evaluated?  
+  
+  
+#### Project Goal ####  
+  It was aimed to determine the causes of forest fires in our country, in which areas they are more intense, which forest types   were damaged more, and to guide the measures to be taken by establishing connections between them and to raise awareness   among people.  
+    
+  
+#### Data Sets ####  
+ In the data sets we have, there are many relevant data under different headings.  We have accessed these data sets from the   [official website of the General Directorate of Forestry](https://www.ogm.gov.tr/tr/e-kutuphane/resmi-istatistikler), which is    affiliated to the Ministry of Agriculture and Forestry of the Republic of Turkey.With these data sets, we will be able to   interpret forest fires with numerical, causal, qualitative and recycling rate.  
+
+#### Actions Taken ####
+
+```{r, warning=F, message=F}
+library(tidyverse)
+library(rvest)
+library(sf)
+library(leaflet)
+library(readr)
+library(readxl)
+library(ggplot2)
+library(tidyr)
+```
+**FOREST AREAS IN TURKEY**
+
+```{r}
+turkey <- st_read("data/turkey_administrativelevels0_1_2/tur_polbnda_adm1.shp")
+```
+
+
+```{r}
+data_forestareas <- read_excel("data/Forest areas of all cities.xlsx")
+```
+
+```{r}
+turkey <- turkey %>%
+          arrange(adm1_tr) 
+```
+```{r}
+turkey[c(48:51),] <- turkey[c(49,50,51,48),]
+
+```
+```{r}
+turkey <- turkey %>%
+              select(adm1_tr) %>%
+              rename("Province" = adm1_tr)
+
+```
+
+
+```{r}
+data_forestareas <- data_forestareas %>%
+          arrange(Province) %>%
+          select(Province,`Total Hectare`)
+```
+
+```{r}
+turkey[,"Province"] <- data_forestareas[,"Province"]
+```
+
+
+```{r}
+combine_2 <- merge(turkey,data_forestareas)
+```
+
+
+```{r}
+my_labels <-  sprintf("<strong>%s</strong><br/> %s Hectare ", combine_2$Province, combine_2$`Total Hectare`) %>%
+            lapply(htmltools::HTML) 
+palcol <- colorNumeric(palette =  "Greens", domain = combine_2$`Total Hectare`)
+map1 <- combine_2 %>% 
+  leaflet() %>%
+  addPolygons(color = "black", 
+              fillColor = ~palcol(`Total Hectare`), 
+              weight = 1, 
+              fillOpacity = 0.9,
+              label = my_labels) %>%
+  addLegend(position = "bottomright",
+            pal = palcol,
+            values = ~`Total Hectare`,
+            title = "Forest Area") %>%
+  fitBounds(lng1 = 26, lat1 = 36 ,
+            lng2 = 44 ,lat2 = 42)
+map1
+```
+
+library(htmlwidgets)
+saveWidget(map1 , file = "Forest Area Map.html")  
+
+The above code is used only 1 time to make the output a widget  
+
+In the first map, the distribution of forest areas on the Turkey map can be examined. The map is scaled in color scale from   white to dark green. White areas show the area with the least forest area, while dark green shows the area with the most forest area. It is immediately striking that the forest area in the west of the country is more than in the east. The province with   the highest forest area is Antalya, and Kastamonu is the second.
+
+**EVOLUTION OF TOTAL WILDFIRE AREAS**
+```{r}
+data_33years <- read_excel("data/Forest Fires of 33 Years.xlsx")
+```
+
+```{r}
+data_33years %>%
+  tail(33) %>%
+  ggplot(aes(x=Year,y=`Total Hectare`, group = 1))+
+  geom_line( color="black")+
+  geom_point(shape=21, color="black", fill="red", size=3)+
+  ggtitle("Evolution of Total Forest Fires")
+```
+
+This line chart shows the total area of hectares burned between 1988 and 2020. Sudden ups and downs can be easily interpreted thanks to the line graph. By identifying the underlying causes of the spikes, forests can be protected more.  
+
+**EVOLUTION OF TOTAL WILDFIRE NUMBERS**
+```{r}
+yillara_gore_data <- read_xlsx("data/yangin19972020.xlsx") 
+```
+
+```{r}
+myplot <- ggplot(yillara_gore_data, aes(x=YILLAR, y=YANGIN_SAYISI)) + 
+  geom_line(color="black", size=2, linetype="solid") +
+  theme(axis.title = element_text(color = "red", size=15, face = "bold") ) +
+  #theme (axis.text.x = element_text(angle=90))
+  theme(axis.line = element_line(colour = "black", size = 1)) +
+  labs(x="YEARS",
+       y="NUMBER OF FIRE",
+       title="EVOLUTION OF TOTAL WILDFIRE NUMBERS", size_sum(50),face="bold",
+       subtitle = "Number of fire between 1997 and 2020") +
+  theme(plot.title = element_text(colour ="red", hjust=0.5, size = 15))
+
+myplot
+```    
+
+  This line chart shows forest fires between 1988 and 2020. Thanks to the line graph, sudden ups and downs can be easily interpreted. By looking for the underlying causes of the spikes, forests can be further protected.
+
+
+**FOREST FIRE AMOUNTS OF ALL PROVINCES IN 2020**
+
+
+```{r}
+data_allprovinces <- read_excel("data/Forest fire amounts of all provinces in 2020.xlsx")
+```
+
+
+```{r}
+data_allprovinces <- data_allprovinces %>%
+          arrange(Province) %>%
+          select(Province,Hectare)
+```
+```{r}
+data_allprovinces$Hectare <- gsub(",",".",data_allprovinces$Hectare) %>% as.numeric() %>% suppressWarnings()
+```
+```{r}
+turkey[,"Province"] <- data_allprovinces[,"Province"]
+```
+
+
+```{r}
+combine2 <- merge(turkey,data_allprovinces)
+```
+
+```{r}
+my_labels <-  sprintf("<strong>%s</strong><br/> %s Hectare ", combine2$Province, combine2$Hectare) %>%
+            lapply(htmltools::HTML) 
+palcol <- colorNumeric(palette =  "Reds", domain = combine2$Hectare)
+map2 <- combine2 %>% 
+  leaflet() %>%
+  addPolygons(color = "black", 
+              fillColor = ~palcol(Hectare), 
+              weight = 1, 
+              fillOpacity = 0.9,
+              label = my_labels) %>%
+  addLegend(position = "bottomright",
+            pal = palcol,
+            values = ~Hectare,
+            title = "Amount of Burned Area") %>%
+  fitBounds(lng1 = 26, lat1 = 36 ,
+            lng2 = 44 ,lat2 = 42)
+map2
+```
+
+
+saveWidget(map2 , file = "Amount of Burned Area Map.html")  
+The above code is used only 1 time to make the output a widget
+
+In the second map, the amount of burned area was examined. On the map, the amount of lit area from white to red is expressed.  While the white areas represent the least amount of fire, the red areas represent the highest amount of fire. As can be seen,   Hatay is the province with the highest number of fires. Hatay is followed by Adana, İzmir and Kastamonu.
+
+**PROVINCES WITH THE MOST FOREST FIRES IN 2020**
+```{r}
+il_dagilimi_data <- read_xlsx("data/illeregoredagilimi.xlsx")
+```
+```{r}
+en_fazla_yangin_iller <-il_dagilimi_data %>%
+         filter( Number > 50) 
+```
+```{r}
+
+myplot2 <- ggplot(en_fazla_yangin_iller, aes(Province,Number)) +
+  geom_point() +
+  ggtitle("NUMBER OF FIRE IN CITY") +
+  xlab("City") +
+  ylab("Number") +
+  theme (axis.text.x = element_text(angle=90)) +
+  theme(plot.title = element_text(colour ="red", hjust=0.5, size = 15) )
+
+myplot2
+```  
+
+  This chart helped find the provinces with the most fires. While the values on the basis of cities are seen on the map, it is possible to easily comment on the number of fires in the cities by printing them out graphically. From the line graph, it was   understood that Antalya and Muğla provinces were the first in the number of forest fires by far. It has been understood that   more precautions should be taken in these provinces compared to other cities.  
+
+
+
+**CITIES WITH MINIMUM FOREST FIRE IN 2020**
+```{r}
+en_az_yangin_iller <-il_dagilimi_data %>%
+         filter( Number < 10) 
+```
+
+```{r}
+myplot3 <- ggplot(en_az_yangin_iller, aes(Province,Number)) +
+  
+  geom_point() +
+  ggtitle("NUMBER OF FIRE IN CITY") +
+  xlab("City") +
+  ylab("Number") +
+  theme (axis.text.x = element_text(angle=90)) +
+  theme(plot.title = element_text(colour ="red", hjust=0.5, size = 15) )
+
+myplot3
+```  
+  
+  This chart helped to find the provinces with the lowest number of fires. While city-based values can be easily seen on the   map, it is possible to easily comment on the number of fires in cities by printing them out graphically. It was understood from   the line graph that Aksaray, Van and Yalova provinces had the least number of forest fires. Based on these data, fire   prevention recommendations can be obtained from the municipalities of these cities and implemented in other provinces.  
+
+
+
+**WİLDFIRE COMPARISONS IN SOME CITIES**
+```{r}
+data_provinces <- read_excel("data/2013-2018.xlsx")
+```
+
+```{r, warning=F, message=F}
+data_provinces$Hectare <- gsub(",",".",data_provinces$Hectare) %>% as.numeric()
+```
+
+
+```{r}
+data_9province <- data_provinces %>%
+        filter((Province == "Hatay" | 
+         Province== "Adana"|
+         Province == "İzmir" |
+         Province == "Antalya" |
+         Province == "Muğla" |
+         Province == "Mersin" |
+         Province == "Çanakkale" |
+         Province == "Kastamonu" |
+         Province == "Ankara") & 
+         Year != "2013" & 
+         Year != "2014" ) 
+```
+
+```{r}
+data_9province %>%
+  ggplot(aes(factor(Province), Hectare, fill = factor(Year)))+
+   geom_bar(stat="identity", position = "dodge") + 
+  scale_fill_brewer(palette = "Set1") +
+  xlab("Provinces") +
+  ylab("Hectares of Burned Areas") +
+  ggtitle("Wildfire Comparisons in Some Cities")+
+  labs(fill = "Year")
+  
+  
+```  
+
+  In this graph, 2015-2020 yılları arasında bazı illerimizde çıkan orman yangını sayıları incelenebilir. This chart will provide  a clear understanding of the year-on-year increase and decrease in forest fires in cities. With the realization of sudden   increases and decreases, forest fires can be prevented by taking necessary precautions in these cities. In addition, by showing   the years in different colors, it is another advantage to be able to compare forest fires in the same year on a city basis.  
+
+**CAUSES OF FOREST FIRE IN 2020**
+```{r}
+data_cause2020 <- read_excel("data/causes-2020.xlsx")
+```
+
+```{r}
+ggplot(data_cause2020) +
+  geom_segment( aes(x=Cause, xend=Cause, y=0, yend=Value), color="grey") +
+  geom_point( aes(x=Cause, y=Value, color=Group), size=3 ) +
+  coord_flip()+
+ theme_light()+
+  theme(
+    legend.position = "none",
+    panel.border = element_blank(),
+    panel.spacing = unit(0.1, "lines"),
+    strip.text.x = element_text(size = 8)) +
+  xlab("Causes") +
+  ylab("Number of Forest Fires") +
+  ggtitle("Causes of Forest Fire in 2020")+
+  facet_wrap(~Group, ncol=1, scale="free_y")
+```  
+
+  In this graph, the causes of forest fires can be examined in detail. The causes of forest fires in this area were grouped under 5 main headings. These headings and subheadings are as follows:  
+1. Accident  
+* Traffic
+* Energy
+* Other  
+2. International  
+* Terror
+* Incension
+* Expanding
+* Other  
+3. Natural(Lighting)  
+4. Negligence  
+* Stubble Fire
+* Shepherd Fire
+* Picnic
+* Hunting
+* Dump
+* Cigarette
+* Other  
+5. Unknown  
+  
+  
+Thanks to this chart, the number of causes of fire can be compared clearly. The conclusion that can be drawn from this graph is that most of the fires with known causes in 2020 were caused by negligence.    
+
+**TYPES OF FORESTS BURNED IN 2020**
+```{r}
+data_foresttype <- read_excel("data/Forest Type.xlsx")
+```
+```{r}
+data_foresttype$`Total Hectare` <- gsub(",",".",data_foresttype$`Total Hectare`) %>% as.numeric()
+```
+
+```{r}
+data_foresttype <- data_foresttype %>%
+  mutate(Ratio = round(data_foresttype$`Total Hectare`/sum(data_foresttype$`Total Hectare`)*100)) %>%
+  mutate(Percentage = paste("%",Ratio))
+```
+
+
+```{r}
+ggplot(data = data_foresttype, aes(x = "", y = `Total Hectare`, fill = `Forest Type`))+
+  geom_bar(stat = "identity", color = "black",width = 1)+
+  coord_polar("y", start=0) +
+  geom_text(aes(label = Percentage),
+            position = position_stack(vjust = 0.4)) +
+  theme_void() +
+  ggtitle("Types of Forests Burned in 2020")
+```  
+
+  In this pie chart, the areas burned in forest fires are divided according to their types.Types shown in the pie chart:
+* Afforestation Area
+* Degraded Coppice
+* Degraded High Forest
+* Forest Soil
+* Maquis
+* National Park
+* Productive Coppice
+* Productive High Forest
+
+
+**SUPPORTING SERVICES**
+```{r}
+data_destekleyicihizmetler <- read_excel("data/destekleyicihizmetler.xlsx")
+```
+
+```{r}
+data_destekleyicihizmetler$TOTAL <- gsub(",",".",data_destekleyicihizmetler$TOTAL) %>% as.numeric()
+data_destekleyicihizmetler <- data_destekleyicihizmetler %>%
+  mutate(Ratio = round(data_destekleyicihizmetler$TOTAL/sum(data_destekleyicihizmetler$TOTAL)*100)) %>%
+  mutate(Percentage = paste("%",Ratio))
+```
+
+```{r}
+ggplot(data_destekleyicihizmetler, aes(x="", y=TOTAL, fill=TANIM)) +
+  geom_bar(stat="identity", width=1, color="black") +
+  coord_polar("y", start=0) +
+  geom_text(aes(label = Percentage),
+            position = position_stack(vjust = 0.5)) +
+  scale_fill_viridis_d() +
+  theme_void()+
+  ggtitle("SUPPORTING SERVICE")+
+  labs(fill = "DEFINITION")
+```  
+  
+  Supporting services for forests are described in this pie chart.
+
+
+**SILVICULTURAL EVALUATION OF BURNED AREAS IN 2020**
+```{r}
+data_silvicultural <- read_excel("data/silvicultural.xlsx")
+```
+
+```{r}
+data_silvicultural$Total <- gsub(",",".",data_silvicultural$Total) %>% as.numeric()
+data_silvicultural <- data_silvicultural %>%
+  mutate(Ratio = round(data_silvicultural$Total/sum(data_silvicultural$Total)*100)) %>%
+  mutate(Percentage = paste("%",Ratio))
+```
+
+```{r}
+ggplot(data_silvicultural, aes(x="", y=Total, fill=Operation)) +
+  geom_bar(stat="identity", width=1, color="black") +
+  coord_polar("y", start=0) +
+  geom_text(aes(label = Percentage),
+            position = position_stack(vjust = 0.5)) +
+  scale_fill_viridis_d() +
+  theme_void()+
+  ggtitle("Silvicultural evaluation of burned areas in 2020")+
+  labs(fill = "Silviculture Operations")
+```  
+ 
+  In this pie chart, the silvicultural assessment of the burned areas in 2020 was examined. First, let's explain silviculture.  
+Silviculture is defined as the establishment of new forests based on the planned forestry approach, the rejuvenation and   maintenance of naturally grown forests with these forests. The areas in this pie chart are divided according to differences in silvicultural processes. These areas are:  
+1. Area get the artificial regeneration program   
+2. Energy forest reneweal and get the establish program area  
+3. Preparing for natural regeneration areas made  
+4. Rehabilitation  
+5. Taken to forestation program areas  
+6. Things to technical process is not taken into protection areas  
+7. Whether cover exposure to fire undamaged areas  
+
+#### Conclusion ####
+The conclusions drawn from the project are as follows:  
+* The number of forest fires in our country is higher in the west than in the east.  
+* The most obvious cause of fire is negligence.  
+* Measures should be increased especially in the southern parts of the country, especially in Hatay, Adana, İzmir, Antalya and   Muğla.  
+* The most burned areas are our most productive high forests.  
+
+#### References ####
+
+[1](https://www.ogm.gov.tr/tr/e-kutuphane/resmi-istatistikler)  
+[2](https://www.kirenz.com/slides/xaringan-demo-slides.html#40)  
+[3](https://www.markdownguide.org/basic-syntax/)  
+[4](https://www.youtube.com/watch?v=nnRAKsQ2uaQ&t=220s)  
+[5](https://rpubs.com/hmztnc/461183)  
+[6](https://www.data-to-viz.com/#lollipop)  
+[7](https://www.datanovia.com/en/blog/how-to-create-a-pie-chart-in-r-using-ggplot2/)  
+[8](https://www.kirenz.com/slides/xaringan-demo-slides.html#1)  
+[9](https://www.data-to-viz.com/graph/lollipop.html)  
+[10](https://stackoverflow.com/questions/17721126/simplest-way-to-do-grouped-barplot)  
+[11](http://r-statistics.co/Top50-Ggplot2-Visualizations-MasterList-R-Code.html)   
+

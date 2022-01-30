@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>MAT381E - INTRODUCTION TO DATA SCIENCE Forest Fires in Turkey</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Beyzanur ERMİŞ - Ayşim HIRDAN" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/default-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# MAT381E - INTRODUCTION TO DATA SCIENCE Forest Fires in Turkey
+## FireFighter
+### Beyzanur ERMİŞ - Ayşim HIRDAN
+
+---
+
+
+**WHY FOREST FIRES?**
+
+&lt;img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRt3k1cEit8bFLwNauO2M4kzJh31Oe_M9-HIA&amp;usqp=CAU" width="400" height="350" /&gt;
+
+ According to the data of the General Directorate of Forestry of Turkey, a total of 68,579 fires broke out between 1988 and 2019, and 336,824 hectares of land were burned. This data corresponds to an average of 2,143 fires per year and the destruction of 10,526 hectares of land.
+
+---
+  
+**NOT JUST ABOUT TREE**  
+
+
+
+ 
+  &lt;img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQVzGlK12gotvsSX1bJedBZbsfN2_BRqOZ8Bg&amp;usqp=CAU" width="400" height="350" /&gt;
+
+---
+
+**Raising awareness about forest fires and determining the measures that can be taken**  
+
+
+&lt;img src="https://thumbs.dreamstime.com/b/be-aware-rubber-stamp-grunge-design-dust-scratches-effects-can-easily-removed-clean-crisp-look-color-changed-110066370.jpg" width="400" height="350" /&gt;
+
+---
+**Introduction Data**  
+
+
+
+&lt;img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSy9WNnif0ROFJuQTioWu9fW0pGYVSojOL9VA&amp;usqp=CAU" width="700" height="350" /&gt;
+
+---
+
+```r
+library(tidyverse)
+library(rvest)
+library(sf)
+library(leaflet)
+library(readr)
+library(readxl)
+library(ggplot2)
+library(tidyr)
+```
+---
+
+**FOREST AREAS IN TURKEY**
+
+
+```r
+turkey &lt;- st_read("data/turkey_administrativelevels0_1_2/tur_polbnda_adm1.shp")
+```
+
+```
+## Reading layer `tur_polbnda_adm1' from data source 
+##   `C:\Users\beyzanur\Desktop\project_final_report-firefighter\data\turkey_administrativelevels0_1_2\tur_polbnda_adm1.shp' 
+##   using driver `ESRI Shapefile'
+## Simple feature collection with 81 features and 8 fields
+## Geometry type: MULTIPOLYGON
+## Dimension:     XY
+## Bounding box:  xmin: 25.66851 ymin: 35.80842 xmax: 44.81793 ymax: 42.10479
+## Geodetic CRS:  WGS 84
+```
+
+
+```r
+turkey &lt;- turkey %&gt;%
+          arrange(adm1_tr) 
+```
+
+```r
+turkey[c(48:51),] &lt;- turkey[c(49,50,51,48),]
+```
+
+```r
+turkey &lt;- turkey %&gt;%
+              select(adm1_tr) %&gt;%
+              rename("Province" = adm1_tr)
+```
+---
+
+```r
+data_forestareas &lt;- read_excel("data/Forest areas of all cities.xlsx")
+data_forestareas
+```
+
+```
+## # A tibble: 81 x 2
+##    Province   `Total Hectare`
+##    &lt;chr&gt;                &lt;dbl&gt;
+##  1 İstanbul            240688
+##  2 Tekirdağ            101174
+##  3 Edirne              103014
+##  4 Kırklareli          254124
+##  5 Balıkesir           632038
+##  6 Çanakkale           480465
+##  7 İzmir               478547
+##  8 Aydın               326605
+##  9 Denizli             588672
+## 10 Muğla               829309
+## # ... with 71 more rows
+```
+---
+
+```r
+data_forestareas &lt;- data_forestareas %&gt;%
+          arrange(Province) %&gt;%
+          select(Province,`Total Hectare`)
+```
+
+
+```r
+turkey[,"Province"] &lt;- data_forestareas[,"Province"]
+```
+
+---
+
+
+```r
+cbind(data_forestareas$Province,turkey$Province)
+```
+
+```
+##       [,1]             [,2]            
+##  [1,] "Adana"          "Adana"         
+##  [2,] "Adıyaman"       "Adıyaman"      
+##  [3,] "Afyonkarahisar" "Afyonkarahisar"
+##  [4,] "Ağrı"           "Ağrı"          
+##  [5,] "Aksaray"        "Aksaray"       
+##  [6,] "Amasya"         "Amasya"        
+##  [7,] "Ankara"         "Ankara"        
+##  [8,] "Antalya"        "Antalya"       
+##  [9,] "Ardahan"        "Ardahan"       
+## [10,] "Artvin"         "Artvin"        
+## [11,] "Aydın"          "Aydın"         
+## [12,] "Balıkesir"      "Balıkesir"     
+## [13,] "Bartın"         "Bartın"        
+## [14,] "Batman"         "Batman"        
+## [15,] "Bayburt"        "Bayburt"       
+## [16,] "Bilecik"        "Bilecik"       
+## [17,] "Bingöl"         "Bingöl"        
+## [18,] "Bitlis"         "Bitlis"        
+## [19,] "Bolu"           "Bolu"          
+## [20,] "Burdur"         "Burdur"        
+## [21,] "Bursa"          "Bursa"         
+## [22,] "Çanakkale"      "Çanakkale"     
+## [23,] "Çankırı"        "Çankırı"       
+## [24,] "Çorum"          "Çorum"         
+## [25,] "Denizli"        "Denizli"       
+## [26,] "Diyarbakır"     "Diyarbakır"    
+## [27,] "Düzce"          "Düzce"         
+## [28,] "Edirne"         "Edirne"        
+## [29,] "Elazığ"         "Elazığ"        
+## [30,] "Erzincan"       "Erzincan"      
+## [31,] "Erzurum"        "Erzurum"       
+## [32,] "Eskişehir"      "Eskişehir"     
+## [33,] "Gaziantep"      "Gaziantep"     
+## [34,] "Giresun"        "Giresun"       
+## [35,] "Gümüşhane"      "Gümüşhane"     
+## [36,] "Hakkari"        "Hakkari"       
+## [37,] "Hatay"          "Hatay"         
+## [38,] "Iğdır"          "Iğdır"         
+## [39,] "Isparta"        "Isparta"       
+## [40,] "İstanbul"       "İstanbul"      
+## [41,] "İzmir"          "İzmir"         
+## [42,] "Kahramanmaraş"  "Kahramanmaraş" 
+## [43,] "Karabük"        "Karabük"       
+## [44,] "Karaman"        "Karaman"       
+## [45,] "Kars"           "Kars"          
+## [46,] "Kastamonu"      "Kastamonu"     
+## [47,] "Kayseri"        "Kayseri"       
+## [48,] "Kilis"          "Kilis"         
+## [49,] "Kırıkkale"      "Kırıkkale"     
+## [50,] "Kırklareli"     "Kırklareli"    
+## [51,] "Kırşehir"       "Kırşehir"      
+## [52,] "Kocaeli"        "Kocaeli"       
+## [53,] "Konya"          "Konya"         
+## [54,] "Kütahya"        "Kütahya"       
+## [55,] "Malatya"        "Malatya"       
+## [56,] "Manisa"         "Manisa"        
+## [57,] "Mardin"         "Mardin"        
+## [58,] "Mersin"         "Mersin"        
+## [59,] "Muğla"          "Muğla"         
+## [60,] "Muş"            "Muş"           
+## [61,] "Nevşehir"       "Nevşehir"      
+## [62,] "Niğde"          "Niğde"         
+## [63,] "Ordu"           "Ordu"          
+## [64,] "Osmaniye"       "Osmaniye"      
+## [65,] "Rize"           "Rize"          
+## [66,] "Sakarya"        "Sakarya"       
+## [67,] "Samsun"         "Samsun"        
+## [68,] "Siirt"          "Siirt"         
+## [69,] "Sinop"          "Sinop"         
+## [70,] "Sivas"          "Sivas"         
+## [71,] "Şanlıurfa"      "Şanlıurfa"     
+## [72,] "Şırnak"         "Şırnak"        
+## [73,] "Tekirdağ"       "Tekirdağ"      
+## [74,] "Tokat"          "Tokat"         
+## [75,] "Trabzon"        "Trabzon"       
+## [76,] "Tunceli"        "Tunceli"       
+## [77,] "Uşak"           "Uşak"          
+## [78,] "Van"            "Van"           
+## [79,] "Yalova"         "Yalova"        
+## [80,] "Yozgat"         "Yozgat"        
+## [81,] "Zonguldak"      "Zonguldak"
+```
+---
+
+```r
+combine_2 &lt;- merge(turkey,data_forestareas)
+```
+
+[FOREST AREA](file:///C:/Users/beyzanur/Desktop/project_final_report-firefighter/Forest%20Area%20Map.html)
+---
+
+**EVOLUTION OF TOTAL WILDFIRE AREAS**
+
+```r
+data_33years &lt;- read_excel("data/Forest Fires of 33 Years.xlsx")
+data_33years
+```
+
+```
+## # A tibble: 33 x 11
+##     Year `Total Hectare` `Numbers of fore~ `Kasıt           ~ `Kasıt           ~
+##    &lt;dbl&gt;           &lt;dbl&gt; &lt;chr&gt;             &lt;chr&gt;              &lt;chr&gt;             
+##  1  1988           18210 1372              -                  -                 
+##  2  1989           13099 1633              -                  -                 
+##  3  1990           13742 1750              -                  -                 
+##  4  1991            8081 1481              -                  -                 
+##  5  1992           12232 2117              -                  -                 
+##  6  1993           15393 2545              -                  -                 
+##  7  1994           30828 3239              -                  -                 
+##  8  1995            7676 1770              -                  -                 
+##  9  1996           14922 1645              -                  -                 
+## 10  1997            6317 1339              193                923               
+## # ... with 23 more rows, and 6 more variables:
+## #   İhmal-Kaza            Negligence-Accident adet &lt;chr&gt;,
+## #   İhmal-Kaza            Negligence-Accident adet  hektar &lt;chr&gt;,
+## #   Doğal                       Natural (Lighting) adet &lt;chr&gt;,
+## #   Doğal                       Natural (Lighting) adet hektar &lt;chr&gt;,
+## #   Sebebi Bilinmeyen       Unknown adet &lt;chr&gt;,
+## #   Sebebi Bilinmeyen       Unknown adet hektar &lt;chr&gt;
+```
+
+---
+
+
+```r
+data_33years %&gt;%
+  tail(33) %&gt;% 
+  ggplot(aes(x=Year,y=`Total Hectare`, group = 1))+geom_line( color="black")+ geom_point(shape=21, color="black", fill="red", size=3)+ ggtitle("Evolution of Total Forest Fires")
+```
+
+&lt;img src="project_presentation_FireFighter_files/figure-html/unnamed-chunk-12-1.png" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+**EVOLUTION OF TOTAL WILDFIRE NUMBERS**
+
+
+```r
+yillara_gore_data &lt;- read_xlsx("data/yangin19972020.xlsx") 
+yillara_gore_data
+```
+
+```
+## # A tibble: 24 x 3
+##    YILLAR YANAN_ALAN_MİKTARI YANGIN_SAYISI
+##     &lt;dbl&gt;              &lt;dbl&gt;         &lt;dbl&gt;
+##  1   1997               6317          1339
+##  2   1998               6764          1932
+##  3   1999               5804          2075
+##  4   2000              26353          2353
+##  5   2001               7394          2631
+##  6   2002               8514          1471
+##  7   2003               6644          2177
+##  8   2004               4876          1762
+##  9   2005               2821          1530
+## 10   2006               7762          2227
+## # ... with 14 more rows
+```
+
+---
+
+
+```r
+myplot &lt;- ggplot(yillara_gore_data, aes(x=YILLAR, y=YANGIN_SAYISI)) + geom_line(color="black", size=2, linetype="solid") +theme(axis.title = element_text(color = "red", size=15, face = "bold") ) + theme(axis.line = element_line(colour = "black", size = 1)) +labs(x="YEARS",y="NUMBER OF FIRE",title="EVOLUTION OF TOTAL WILDFIRE NUMBERS", size_sum(50),face="bold",subtitle = "Number of fire between 1997 and 2020") +theme(plot.title = element_text(colour ="red", hjust=0.5, size = 15))
+myplot
+```
+
+&lt;img src="project_presentation_FireFighter_files/figure-html/unnamed-chunk-14-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+**FOREST FIRE AMOUNTS OF ALL PROVINCES IN 2020**
+
+
+```r
+data_allprovinces &lt;- read_excel("data/Forest fire amounts of all provinces in 2020.xlsx")
+data_allprovinces
+```
+
+```
+## # A tibble: 81 x 4
+##    `Third level` Province   Number Hectare           
+##    &lt;chr&gt;         &lt;chr&gt;      &lt;chr&gt;  &lt;chr&gt;             
+##  1 TR100         İstanbul   147    62.28             
+##  2 TR211         Tekirdağ   21     99.15             
+##  3 TR212         Edirne     34     202.91            
+##  4 TR213         Kırklareli 17     10.220000000000001
+##  5 TR221         Balıkesir  80     104.23            
+##  6 TR222         Çanakkale  101    871.7             
+##  7 TR310         İzmir      167    2329.2199999999998
+##  8 TR321         Aydın      64     326.57            
+##  9 TR322         Denizli    31     321.69            
+## 10 TR323         Muğla      260    478.22            
+## # ... with 71 more rows
+```
+---
+
+
+
+```r
+data_allprovinces &lt;- data_allprovinces %&gt;%
+          arrange(Province) %&gt;%
+          select(Province,Hectare)
+```
+
+```r
+data_allprovinces$Hectare &lt;- gsub(",",".",data_allprovinces$Hectare) %&gt;% as.numeric() %&gt;% suppressWarnings()
+```
+
+```r
+turkey[,"Province"] &lt;- data_allprovinces[,"Province"]
+```
+
+
+```r
+combine2 &lt;- merge(turkey,data_allprovinces)
+```
+
+[FOREST FIRE AMOUNTS OF ALL PROVINCES IN 2020](file:///C:/Users/beyzanur/Desktop/project_final_report-firefighter/Amount%20of%20Burned%20Area%20Map.html)
+---
+
+**PROVINCES WITH THE MOST FOREST FIRES IN 2020**
+
+```r
+il_dagilimi_data &lt;- read_xlsx("data/illeregoredagilimi.xlsx")
+il_dagilimi_data
+```
+
+```
+## # A tibble: 78 x 4
+##    `Third level` Province      Number Hectare
+##    &lt;chr&gt;         &lt;chr&gt;          &lt;dbl&gt;   &lt;dbl&gt;
+##  1 TR323         Muğla            260   478. 
+##  2 TR611         Antalya          260   400. 
+##  3 TR310         İzmir            167  2329. 
+##  4 TR821         Kastamonu        155  1491. 
+##  5 TR100         İstanbul         147    62.3
+##  6 TR621         Adana            125  2645. 
+##  7 TR331         Manisa           121  1791. 
+##  8 TR222         Çanakkale        101   872. 
+##  9 TR631         Hatay            100  4979. 
+## 10 TR632         Kahramanmaraş     94   306. 
+## # ... with 68 more rows
+```
+
+```r
+en_fazla_yangin_iller &lt;-il_dagilimi_data %&gt;%filter( Number &gt; 50) 
+```
+
+---
+
+
+```r
+myplot2 &lt;- ggplot(en_fazla_yangin_iller, aes(Province,Number)) +
+  geom_point() +ggtitle("NUMBER OF FIRE IN CITY") +xlab("City") +ylab("Number") +theme (axis.text.x = element_text(angle=90)) +theme(plot.title = element_text(colour ="red", hjust=0.5, size = 15) )
+myplot2
+```
+
+&lt;img src="project_presentation_FireFighter_files/figure-html/unnamed-chunk-22-1.png" style="display: block; margin: auto;" /&gt;
+---
+**CITIES WITH MINIMUM FOREST FIRE IN 2020**
+
+```r
+en_az_yangin_iller &lt;-il_dagilimi_data %&gt;%
+         filter( Number &lt; 10) 
+en_az_yangin_iller
+```
+
+```
+## # A tibble: 15 x 4
+##    `Third level` Province  Number Hectare
+##    &lt;chr&gt;         &lt;chr&gt;      &lt;dbl&gt;   &lt;dbl&gt;
+##  1 TRB24         Hakkari        9   35.6 
+##  2 TRA11         Erzurum        8   13   
+##  3 TRC13         Kilis          8    3.6 
+##  4 TR721         Kayseri        7   52.9 
+##  5 TR713         Niğde          4    3.55
+##  6 TRA22         Kars           4    2.3 
+##  7 TRA24         Ardahan        4   16.5 
+##  8 TRC32         Batman         4    9.31
+##  9 TR711         Kırıkkale      3    3.71
+## 10 TR714         Nevşehir       3    6.83
+## 11 TR715         Kırşehir       3    6   
+## 12 TRA13         Bayburt        3    2.15
+## 13 TR425         Yalova         1    0.83
+## 14 TR712         Aksaray        1    0.2 
+## 15 TRB21         Van            1    0.82
+```
+
+---
+
+
+```r
+myplot3 &lt;- ggplot(en_az_yangin_iller, aes(Province,Number)) +
+  geom_point() +ggtitle("NUMBER OF FIRE IN CITY") +xlab("City") +ylab("Number") +theme (axis.text.x = element_text(angle=90)) +theme(plot.title = element_text(colour ="red", hjust=0.5, size = 15) )
+myplot3
+```
+
+&lt;img src="project_presentation_FireFighter_files/figure-html/unnamed-chunk-24-1.png" style="display: block; margin: auto;" /&gt;
+---
+**WİLDFIRE COMPARISONS IN SOME CITIES**
+
+```r
+data_provinces &lt;- read_excel("data/2013-2018.xlsx")
+data_provinces
+```
+
+```
+## # A tibble: 656 x 4
+##     Year Province   Number Hectare           
+##    &lt;dbl&gt; &lt;chr&gt;      &lt;chr&gt;  &lt;chr&gt;             
+##  1  2020 İstanbul   147    62.28             
+##  2  2020 Tekirdağ   21     99.15             
+##  3  2020 Edirne     34     202.91            
+##  4  2020 Kırklareli 17     10.220000000000001
+##  5  2020 Balıkesir  80     104.23            
+##  6  2020 Çanakkale  101    871.7             
+##  7  2020 İzmir      167    2329.2199999999998
+##  8  2020 Aydın      64     326.57            
+##  9  2020 Denizli    31     321.69            
+## 10  2020 Muğla      260    478.22            
+## # ... with 646 more rows
+```
+---
+
+```r
+data_provinces$Hectare &lt;- gsub(",",".",data_provinces$Hectare) %&gt;% as.numeric()
+```
+
+
+
+```r
+data_9province &lt;- data_provinces %&gt;%
+        filter((Province == "Hatay" | 
+         Province== "Adana"|
+         Province == "İzmir" |
+         Province == "Antalya" |
+         Province == "Muğla" |
+         Province == "Mersin" |
+         Province == "Çanakkale" |
+         Province == "Kastamonu" |
+         Province == "Ankara") &amp; 
+         Year != "2013" &amp; 
+         Year != "2014" ) 
+```
+---
+
+```r
+data_9province %&gt;%
+  ggplot(aes(factor(Province), Hectare, fill = factor(Year)))+
+  geom_bar(stat="identity", position = "dodge") + 
+  scale_fill_brewer(palette = "Set1") +
+  xlab("Provinces") + ylab("Hectares of Burned Areas") + ggtitle("Wildfire Comparisons in Some Cities") + labs(fill = "Year")
+```
+
+&lt;img src="project_presentation_FireFighter_files/figure-html/unnamed-chunk-28-1.png" style="display: block; margin: auto;" /&gt;
+---
+
+**CAUSES OF FOREST FIRE IN 2020**
+
+
+```r
+data_cause2020 &lt;- read_excel("data/causes-2020.xlsx")
+data_cause2020
+```
+
+```
+## # A tibble: 16 x 4
+##    Cause              Group              Value    id
+##    &lt;chr&gt;              &lt;chr&gt;              &lt;dbl&gt; &lt;dbl&gt;
+##  1 Stubble fire       Negligence           205     1
+##  2 Dump               Negligence            32     2
+##  3 Hunting            Negligence             4     3
+##  4 Shepherd fire      Negligence            49     4
+##  5 Cigarette          Negligence            45     5
+##  6 Picnic             Negligence            24     6
+##  7 Other              Negligence           607     7
+##  8 Terror             Intentional            4     8
+##  9 Incension          Intentional           30     9
+## 10 Expanding          Intentional            2    10
+## 11 Other              Intentional           36    11
+## 12 Energy             Accident             133    12
+## 13 Traffic            Accident              20    13
+## 14 Other              Accident              37    14
+## 15 Unknown            Unknown             1859    15
+## 16 Natural (Lighting) Natural (Lighting)   312    16
+```
+---
+
+```r
+ggplot(data_cause2020) + 
+  geom_segment( aes(x=Cause, xend=Cause, y=0, yend=Value), color="grey") + geom_point( aes(x=Cause, y=Value, color=Group),  size=3 ) + coord_flip()+ theme_dark()+
+  theme(legend.position = "none", panel.border = element_blank(), panel.spacing = unit(0.1, "lines"),strip.text.x = element_text(size = 8)) + xlab("Causes") + ylab("Number of Forest Fires") + ggtitle("Causes of Forest Fire in 2020") + facet_wrap(~Group, ncol=1, scale="free_y")
+```
+
+&lt;img src="project_presentation_FireFighter_files/figure-html/unnamed-chunk-30-1.png" style="display: block; margin: auto;" /&gt;
+---
+
+**TYPES OF FORESTS BURNED IN 2020**
+
+```r
+data_foresttype &lt;- read_excel("data/Forest Type.xlsx")
+data_foresttype
+```
+
+```
+## # A tibble: 8 x 2
+##   `Forest Type`          `Total Hectare`
+##   &lt;chr&gt;                            &lt;dbl&gt;
+## 1 Productive High forest         14379. 
+## 2 Degraded High forest            2712. 
+## 3 Productive Coppice               159. 
+## 4 Degraded Coppice                 463. 
+## 5 Maquis                          1944. 
+## 6 Afforestation area              1086. 
+## 7 National Park                     61.8
+## 8 Forest soil                      167.
+```
+---
+
+```r
+data_foresttype$`Total Hectare` &lt;- gsub(",",".",data_foresttype$`Total Hectare`) %&gt;% as.numeric()
+```
+
+
+```r
+data_foresttype &lt;- data_foresttype %&gt;%
+  mutate(Ratio = round(data_foresttype$`Total Hectare`/sum(data_foresttype$`Total Hectare`)*100)) %&gt;%
+  mutate(Percentage = paste("%",Ratio))
+```
+---
+
+```r
+ggplot(data = data_foresttype, aes(x = "", y = `Total Hectare`, fill = `Forest Type`))+
+  geom_bar(stat = "identity", color = "black",width = 1)+coord_polar("y", start=0) +geom_text(aes(label = Percentage),position = position_stack(vjust = 0.4)) + theme_void() + ggtitle("Types of Forests Burning in 2020")
+```
+
+&lt;img src="project_presentation_FireFighter_files/figure-html/unnamed-chunk-34-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+**SUPPORTING SERVICES**
+
+```r
+data_destekleyicihizmetler &lt;- read_excel("data/destekleyicihizmetler.xlsx")
+data_destekleyicihizmetler
+```
+
+```
+## # A tibble: 5 x 2
+##   TANIM                                                           TOTAL
+##   &lt;chr&gt;                                                           &lt;dbl&gt;
+## 1 Silviculture activities                                     396714529
+## 2 Forest protection activities                                201756505
+## 3 In-forest establishment and maintenance of road activities  251139402
+## 4 Production service activities, forestry                    2307046798
+## 5 Forest management activities                                 21325882
+```
+
+
+```r
+data_destekleyicihizmetler$TOTAL &lt;- gsub(",",".",data_destekleyicihizmetler$TOTAL) %&gt;% as.numeric()
+data_destekleyicihizmetler &lt;- data_destekleyicihizmetler %&gt;%
+  mutate(Ratio = round(data_destekleyicihizmetler$TOTAL/sum(data_destekleyicihizmetler$TOTAL)*100)) %&gt;%
+  mutate(Percentage = paste("%",Ratio))
+```
+---
+
+```r
+ggplot(data_destekleyicihizmetler, aes(x="", y=TOTAL, fill=TANIM)) +
+  geom_bar(stat="identity", width=1, color="black") +coord_polar("y", start=0) +geom_text(aes(label = Percentage),position = position_stack(vjust = 0.5)) +scale_fill_viridis_d() +theme_void()+ggtitle("SUPPORTING SERVICE")+labs(fill = "DEFINITION")
+```
+
+&lt;img src="project_presentation_FireFighter_files/figure-html/unnamed-chunk-37-1.png" style="display: block; margin: auto;" /&gt;
+---
+**SILVICULTURAL EVALUATION OF BURNED AREAS IN 2020**
+
+```r
+data_silvicultural &lt;- read_excel("data/silvicultural.xlsx")
+data_silvicultural
+```
+
+```
+## # A tibble: 7 x 2
+##   Operation                                                       Total
+##   &lt;chr&gt;                                                           &lt;dbl&gt;
+## 1 Whether cover exposure to fire, undamaged areas                2368. 
+## 2 Preparing for natural regeneration areas made                  5319. 
+## 3 Energy forest renewal and get the establish program area         94.8
+## 4 Area get the artificial regeneration program                   4269. 
+## 5 Rehabilitation                                                  427. 
+## 6 Taken to forestation program areas                             5654. 
+## 7 Things to technical process is not taken into protection areas 2840.
+```
+
+
+```r
+data_silvicultural$Total &lt;- gsub(",",".",data_silvicultural$Total) %&gt;% as.numeric()
+data_silvicultural &lt;- data_silvicultural %&gt;%
+  mutate(Ratio = round(data_silvicultural$Total/sum(data_silvicultural$Total)*100)) %&gt;%
+  mutate(Percentage = paste("%",Ratio))
+```
+
+---
+
+
+```r
+ggplot(data_silvicultural, aes(x="", y=Total, fill=Operation)) +
+  geom_bar(stat="identity", width=1, color="black") + coord_polar("y", start=0) + geom_text(aes(label = Percentage), position = position_stack(vjust = 0.5)) + scale_fill_viridis_d() + theme_void()+ ggtitle("Silvicultural evaluation of burned areas in 2020")+ labs(fill = "Silviculture Operations")
+```
+
+&lt;img src="project_presentation_FireFighter_files/figure-html/unnamed-chunk-40-1.png" style="display: block; margin: auto;" /&gt;
+---
+**Challanges**  
+* While implementing our project, difficulties were encountered in the mapping and pie chart stages
+* Problems occurred while loading the map to the slide
+---
+**Conclusion**  
+The conclusions drawn from the project are as follows:  
+* The number of forest fires in our country is higher in the west than in the east.  
+* The most obvious cause of fire is negligence.  
+* Measures should be increased especially in the southern parts of the country, especially in Hatay, Adana, İzmir, Antalya and   Muğla.  
+* The most burned areas are our most productive high forests. 
+---
+**References**  
+[1](https://www.ogm.gov.tr/tr/e-kutuphane/resmi-istatistikler)  
+[2](https://www.kirenz.com/slides/xaringan-demo-slides.html#40)  
+[3](https://www.markdownguide.org/basic-syntax/)  
+[4](https://www.youtube.com/watch?v=nnRAKsQ2uaQ&amp;t=220s)  
+[5](https://rpubs.com/hmztnc/461183)  
+[6](https://www.data-to-viz.com/#lollipop)  
+[7](https://www.datanovia.com/en/blog/how-to-create-a-pie-chart-in-r-using-ggplot2/)  
+[8](https://www.kirenz.com/slides/xaringan-demo-slides.html#1)  
+[9](https://www.data-to-viz.com/graph/lollipop.html)  
+[10](https://stackoverflow.com/questions/17721126/simplest-way-to-do-grouped-barplot)  
+[11](http://r-statistics.co/Top50-Ggplot2-Visualizations-MasterList-R-Code.html)  
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
