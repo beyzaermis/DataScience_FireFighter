@@ -1,2 +1,2 @@
-# project_final_FireFighter
+# DataScience_FireFighter
 Forest Fires in Turkey
