@@ -12,6 +12,11 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
+#### Project Team Members ####  
+
+* Beyzanur ERMİŞ  
+* Ayşim HIRDAN  
+
 #### Project Description ####  
 
 In this project, forest fires in Turkey were analyzed mathematically, causally and consequentially with the data we received   from the Ministry of Agriculture and Forestry.  
@@ -113,7 +118,7 @@ map1
 library(htmlwidgets)
 saveWidget(map1 , file = "Forest Area Map.html")  
 
-The above code is used only 1 time to make the output a widget  
+*The above code is used only 1 time to make the output a widget*  
 
 In the first map, the distribution of forest areas on the Turkey map can be examined. The map is scaled in color scale from   white to dark green. White areas show the area with the least forest area, while dark green shows the area with the most forest area. It is immediately striking that the forest area in the west of the country is more than in the east. The province with   the highest forest area is Antalya, and Kastamonu is the second.
 
@@ -203,7 +208,7 @@ map2
 
 
 saveWidget(map2 , file = "Amount of Burned Area Map.html")  
-The above code is used only 1 time to make the output a widget
+*The above code is used only 1 time to make the output a widget*
 
 In the second map, the amount of burned area was examined. On the map, the amount of lit area from white to red is expressed.  While the white areas represent the least amount of fire, the red areas represent the highest amount of fire. As can be seen,   Hatay is the province with the highest number of fires. Hatay is followed by Adana, İzmir and Kastamonu.
 
